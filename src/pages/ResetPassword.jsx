@@ -2,36 +2,32 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate, Link } from 'react-router-dom'
-import { login } from '../services/authService'
-import useAuthStore from '../store/authStore'
+import { useNavigate } from 'react-router-dom'
+import { resetPassword } from '../services/authService'
 
 const schema = z.object({
-  email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirm_password: z.string().min(6, 'Please confirm your password'),
+}).refine(data => data.password === data.confirm_password, {
+  message: 'Passwords do not match',
+  path: ['confirm_password'],
 })
 
-const Login = () => {
+const ResetPassword = () => {
   const navigate = useNavigate()
-  const { initialize } = useAuthStore()
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(schema)
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(schema),
   })
 
   const onSubmit = async (formData) => {
-    setLoading(true)
     setError('')
     try {
-      await login(formData.email, formData.password)
-      await initialize()
-      navigate('/dashboard')
+      await resetPassword(formData.password)
+      navigate('/login')
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.')
-    } finally {
-      setLoading(false)
+      setError(err.message || 'Failed to reset password.')
     }
   }
 
@@ -40,7 +36,7 @@ const Login = () => {
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-green-700">GAP</h1>
-          <p className="text-gray-500 text-sm mt-1">Agricultural Supply System</p>
+          <p className="text-gray-500 text-sm mt-1">Set your new password</p>
         </div>
 
         {error && (
@@ -52,22 +48,7 @@ const Login = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              {...register('email')}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="you@example.com"
-            />
-            {errors.email && (
-              <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
+              New Password
             </label>
             <input
               type="password"
@@ -80,26 +61,32 @@ const Login = () => {
             )}
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Confirm New Password
+            </label>
+            <input
+              type="password"
+              {...register('confirm_password')}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="••••••••"
+            />
+            {errors.confirm_password && (
+              <p className="text-red-500 text-xs mt-1">{errors.confirm_password.message}</p>
+            )}
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 disabled:opacity-50"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {isSubmitting ? 'Resetting...' : 'Reset Password'}
           </button>
-
-          <div className="flex items-center justify-between text-sm">
-            <Link to="/forgot-password" className="text-green-600 hover:underline">
-              Forgot password?
-            </Link>
-            <Link to="/register" className="text-green-600 hover:underline">
-              Register as Customer
-            </Link>
-          </div>
         </form>
       </div>
     </div>
   )
 }
 
-export default Login
+export default ResetPassword
